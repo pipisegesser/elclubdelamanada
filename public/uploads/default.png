@@ -1,0 +1,5 @@
+{
+"action": "dalle.text2im",
+"action_input": "{ "prompt": "A simple, cute paw print icon in a cartoon style. Black bold outlines, filled with a soft cream or white color, isolated on a transparent or solid white background. High contrast, matches a pet shop branding with orange and yellow theme.", "aspect_ratio": "1:1" }",
+"thought": "Generando una imagen de una patita para usar como 'default.png' en el sistema de El Club de la Manada."
+}
