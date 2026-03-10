@@ -84,7 +84,7 @@ app.get('/login', (req, res) => {
         <div class="container text-center">
             <div class="card mx-auto" style="max-width: 400px;">
                 <div class="card-body p-5">
-                    <img src="/portada.jpg" class="img-fluid mb-4 rounded shadow-sm" style="border: 2px solid #000">
+                    <img src="/portada.jpeg" class="img-fluid mb-4 rounded shadow-sm" style="border: 2px solid #000">
                     <h2 class="mb-4">LOGIN</h2>
                     <form action="/login" method="POST">
                         <input type="text" name="usuario" class="form-control mb-3" placeholder="Usuario" required>
@@ -149,7 +149,7 @@ app.get('/', requiereLogin, (req, res) => {
             <nav class="navbar mb-4">
                 <div class="container d-flex justify-content-between align-items-center">
                     <div class="d-flex align-items-center">
-                        <img src="/portada.jpg" height="50" class="me-3 rounded shadow-sm" style="border: 2px solid #000">
+                        <img src="/portada.jpeg" height="50" class="me-3 rounded shadow-sm" style="border: 2px solid #000">
                         <h4 class="fw-bold m-0">EL CLUB DE LA MANADA</h4>
                     </div>
                     <div>
@@ -266,3 +266,4 @@ app.get('/eliminar/:id', requiereLogin, (req, res) => {
 });
 
 app.listen(port, () => console.log(`Servidor Manada listo!`));
+
