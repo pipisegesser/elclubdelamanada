@@ -238,4 +238,25 @@ app.get('/borrar/:id', requiereLogin, (req, res) => {
 
 app.get('/logout', (req, res) => { req.session.destroy(); res.redirect('/login'); });
 
+
 app.listen(port, () => console.log("El Club de la Manada Online en puerto " + port));
+
+// --- RUTA DE BACKUP (DESCARGAR EXCEL/CSV) ---
+app.get('/descargar-datos', requiereLogin, (req, res) => {
+    db.all("SELECT id, nombre, apellido, puntos FROM clientes", [], (err, filas) => {
+        if (err) return res.status(500).send("Error");
+
+        // Encabezados del CSV
+        let csv = "ID,Nombre,Apellido,Puntos\n";
+        
+        // Unimos los datos
+        filas.forEach(f => {
+            csv += `${f.id},${f.nombre},${f.apellido},${f.puntos}\n`;
+        });
+
+        // Configuración para que el navegador lo descargue
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename=respaldo_manada.csv');
+        res.status(200).send(csv);
+    });
+});
