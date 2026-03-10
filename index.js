@@ -58,7 +58,7 @@ app.get('/login', (req, res) => {
         <style>body{background:#FFAA00; height:100vh; display:flex; align-items:center; font-family:sans-serif;}</style>
         <div class="container text-center"><div class="card mx-auto shadow-lg border-0" style="max-width:350px; border-radius:20px">
             <div class="card-body p-5">
-                <img src="/portada.jpg" class="img-fluid mb-4 rounded border border-dark">
+                <img src="/portada.jpeg" class="img-fluid mb-4 rounded border border-dark">
                 <h3 class="fw-bold mb-4 text-dark">ENTRAR</h3>
                 <form action="/login" method="POST">
                     <input type="text" name="usuario" class="form-control mb-3" placeholder="Usuario" required>
@@ -121,7 +121,7 @@ app.get('/', requiereLogin, (req, res) => {
             <body>
                 <nav class="navbar p-2 mb-4 shadow-sm"><div class="container d-flex justify-content-between align-items-center">
                     <div class="d-flex align-items-center">
-                        <img src="/portada.jpg" height="50" class="rounded border border-dark me-2"> 
+                        <img src="/portada.jpeg" height="50" class="rounded border border-dark me-2"> 
                         <h5 class="m-0 fw-bold text-dark">MANADA: ${stat ? stat.total : 0}</h5>
                     </div>
                     <a href="/logout" class="btn btn-sm btn-dark">Salir</a>
@@ -176,18 +176,32 @@ app.get('/', requiereLogin, (req, res) => {
                         </td>
                         <td>
                             <div class="d-flex flex-wrap gap-3 mb-3">
-                                ${f.lista_m ? f.lista_m.split(',').map(m => {
-                                    const parts = m.split('|');
-                                    const mid = parts[0], n = parts[1], foto = parts[2], tipo = parts[3], cumple = parts[4], info = parts[5];
-                                    const esCumple = cumple && cumple.slice(5, 10) === hoy;
-                                    let imgPath = foto ? '/uploads/' + foto : '/uploads/' + tipo + '.png';
-                                    
-                                    return '<div class="text-center position-relative" style="width: 70px;">' +
-                                                '<img src="' + imgPath + '" class="img-mascota ' + (esCumple ? 'cumple-hoy' : '') + '" title="' + info + '">' +
-                                                '<div style="font-size: 11px;" class="fw-bold mt-1 ' + (esCumple ? 'text-danger' : '') + '">' + (esCumple ? '🎂' : '') + n + '</div>' +
-                                                '<a href="/eliminar-mascota/' + mid + '" class="position-absolute top-0 end-0 badge bg-danger rounded-circle p-1" style="font-size:8px; text-decoration:none">X</a>' +
-                                            '</div>';
-                                }).join('') : '<small class="text-muted">Sin mascotas</small>'}
+                            // Reemplazá el bloque del .map(m => { ... }) por este:
+${f.lista_m ? f.lista_m.split(',').map(m => {
+    const parts = m.split('|');
+    const mid = parts[0], n = parts[1], foto = parts[2], tipo = parts[3], cumple = parts[4], info = parts[5];
+    const esCumple = cumple && cumple.slice(5, 10) === hoy;
+    
+    // LÓGICA DE IMAGEN: Si hay foto la muestra, si no, usa un Emoji según el tipo
+    let contenidoImagen = '';
+    if (foto) {
+        contenidoImagen = `<img src="/uploads/${foto}" class="img-mascota ${esCumple ? 'cumple-hoy' : ''}" title="${info}">`;
+    } else {
+        const iconos = { perro: '🐶', gato: '🐱', otro: '🐰' };
+        const emoji = iconos[tipo] || '🐾';
+        contenidoImagen = `<div class="img-mascota d-flex align-items-center justify-content-center ${esCumple ? 'cumple-hoy' : ''}" 
+                                style="font-size: 30px; background: #fff;" title="${info}">
+                                ${emoji}
+                           </div>`;
+    }
+    
+    return `<div class="text-center position-relative" style="width: 70px;">
+                ${contenidoImagen}
+                <div style="font-size: 11px;" class="fw-bold mt-1 ${esCumple ? 'text-danger' : ''}">${esCumple ? '🎂' : ''}${n}</div>
+                <a href="/eliminar-mascota/${mid}" class="position-absolute top-0 end-0 badge bg-danger rounded-circle p-1" style="font-size:8px; text-decoration:none">X</a>
+            </div>`;
+}).join('') : '<small class="text-muted">Sin mascotas</small>'}
+                              
                             </div>
                             <form action="/agregar-mascota" method="POST" enctype="multipart/form-data" class="bg-light p-2 rounded border shadow-sm">
                                 <input type="hidden" name="cliente_id" value="${f.id}">
@@ -264,3 +278,4 @@ app.get('/eliminar/:id', requiereLogin, (req, res) => {
 });
 
 app.listen(port, () => console.log(`Manada activa!`));
+
