@@ -52,7 +52,7 @@ app.get('/login', (req, res) => {
         <style>body{background:#FFAA00; height:100vh; display:flex; align-items:center; font-family:sans-serif;}</style>
         <div class="container text-center"><div class="card mx-auto shadow-lg border-0" style="max-width:350px; border-radius:20px">
             <div class="card-body p-5">
-                <img src="/portada.jpg" class="img-fluid mb-4 rounded border border-dark">
+                <img src="/portada.jpeg" class="img-fluid mb-4 rounded border border-dark">
                 <form action="/login" method="POST">
                 <input type="text" name="u" class="form-control mb-3" placeholder="Usuario" required>
                     <input type="password" name="p" class="form-control mb-4" placeholder="Contraseña" required>
@@ -109,7 +109,7 @@ app.get('/', requiereLogin, (req, res) => {
             </head>
             <body>
                 <nav class="navbar p-2 mb-4"><div class="container d-flex justify-content-between align-items-center">
-                    <div class="d-flex align-items-center"><img src="/portada.jpg" height="50" class="rounded border border-dark me-2"> <h5 class="m-0 fw-bold">TOTAL: ${stat.total || 0}</h5></div>
+                    <div class="d-flex align-items-center"><img src="/portada.jpeg" height="50" class="rounded border border-dark me-2"> <h5 class="m-0 fw-bold">TOTAL: ${stat.total || 0}</h5></div>
                     <a href="/logout" class="btn btn-sm btn-dark">Salir</a>
                 </div></nav>
 
@@ -259,4 +259,5 @@ app.get('/eliminar/:id', requiereLogin, (req, res) => {
 });
 
 app.listen(port, () => console.log(`Manada activa!`));
+
 
