@@ -9,119 +9,77 @@ const fs = require('fs');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// --- CONFIGURACIÓN DE CARPETAS ---
+// --- CARPETAS ---
 if (!fs.existsSync('./public/uploads')) {
     fs.mkdirSync('./public/uploads', { recursive: true });
 }
 
-// --- CONEXIÓN A BASE DE DATOS ---
 const db = new sqlite3.Database('./petshop.db');
 
 db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS clientes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        nombre TEXT,
-        apellido TEXT,
-        telefono TEXT,
-        direccion TEXT,
-        puntos INTEGER DEFAULT 0
+        nombre TEXT, apellido TEXT, telefono TEXT, direccion TEXT, puntos INTEGER DEFAULT 0
     )`);
-
     db.run(`CREATE TABLE IF NOT EXISTS mascotas (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        nombre_mascota TEXT,
-        tipo TEXT,
-        cumple_mascota TEXT,
-        foto TEXT,
-        cliente_id INTEGER,
+        nombre_mascota TEXT, tipo TEXT, cumple TEXT, info TEXT, foto TEXT, cliente_id INTEGER,
         FOREIGN KEY(cliente_id) REFERENCES clientes(id)
     )`);
-
     db.run(`CREATE TABLE IF NOT EXISTS usuarios (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE,
-        password TEXT,
-        rol TEXT
+        id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, password TEXT, rol TEXT
     )`);
-
-    db.get("SELECT count(*) as count FROM usuarios", (err, row) => {
-        if (row && row.count === 0) {
-            db.run("INSERT INTO usuarios (username, password, rol) VALUES ('admin', 'admin123', 'desarrollador')");
-            db.run("INSERT INTO usuarios (username, password, rol) VALUES ('dueno', 'manada2026', 'usuario')");
-        }
-    });
 });
 
-// --- MIDDLEWARES ---
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('public'));
-app.use(session({
-    secret: 'token-manada-2026',
-    resave: false,
-    saveUninitialized: true
-}));
+app.use(session({ secret: 'manada-2026', resave: false, saveUninitialized: true }));
 
 const storage = multer.diskStorage({
     destination: 'public/uploads/',
-    filename: (req, file, cb) => {
-        cb(null, Date.now() + path.extname(file.originalname));
-    }
+    filename: (req, file, cb) => { cb(null, Date.now() + path.extname(file.originalname)); }
 });
 const upload = multer({ storage: storage });
 
 function requiereLogin(req, res, next) {
-    if (req.session.logueado) next();
-    else res.redirect('/login');
+    if (req.session.logueado) next(); else res.redirect('/login');
 }
 
 // --- LOGIN ---
 app.get('/login', (req, res) => {
     res.send(`
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-        <style>
-            body { background: #FFAA00; background: linear-gradient(135deg, #FFAA00 0%, #FFD600 100%); height: 100vh; display: flex; align-items: center; font-family: 'Arial Black', sans-serif; }
-            .card { border: 4px solid #000; border-radius: 25px; box-shadow: 10px 10px 0px #000; }
-            .btn-primary { background: #000; border: none; color: #FFAA00; font-weight: bold; border-radius: 15px; }
-        </style>
-        <div class="container text-center">
-            <div class="card mx-auto" style="max-width: 400px;">
-                <div class="card-body p-5">
-                    <img src="/portada.jpeg" class="img-fluid mb-4 rounded shadow-sm" style="border: 2px solid #000">
-                    <h2 class="mb-4">EL CLUB</h2>
-                    <form action="/login" method="POST">
-                        <input type="text" name="usuario" class="form-control mb-3" placeholder="Usuario" required>
-                        <input type="password" name="password" class="form-control mb-4" placeholder="Contraseña" required>
-                        <button class="btn btn-primary w-100 py-2">ENTRAR</button>
-                    </form>
-                </div>
+        <style>body{background:#FFAA00; height:100vh; display:flex; align-items:center; font-family:sans-serif;}</style>
+        <div class="container text-center"><div class="card mx-auto shadow-lg border-0" style="max-width:350px; border-radius:20px">
+            <div class="card-body p-5">
+                <img src="/portada.jpg" class="img-fluid mb-4 rounded border border-dark">
+                <form action="/login" method="POST">
+                <input type="text" name="u" class="form-control mb-3" placeholder="Usuario" required>
+                    <input type="password" name="p" class="form-control mb-4" placeholder="Contraseña" required>
+                    <button class="btn btn-dark w-100 fw-bold">ENTRAR</button>
+                </form>
             </div>
-        </div>
+        </div></div>
     `);
 });
 
 app.post('/login', (req, res) => {
-    const { usuario, password } = req.body;
-    db.get("SELECT * FROM usuarios WHERE username = ? AND password = ?", [usuario, password], (err, user) => {
-        if (user) {
-            req.session.logueado = true;
-            req.session.rol = user.rol;
-            res.redirect('/');
-        } else {
-            res.send('Acceso denegado. <a href="/login">Volver</a>');
-        }
+    const { u, p } = req.body;
+    db.get("SELECT * FROM usuarios WHERE username=? AND password=?", [u, p], (err, user) => {
+        if (user) { req.session.logueado = true; req.session.rol = user.rol; res.redirect('/'); }
+        else { res.send('Error. <a href="/login">Volver</a>'); }
     });
 });
 
-app.get('/logout', (req, res) => {
-    req.session.destroy();
-    res.redirect('/login');
-});
+app.get('/logout', (req, res) => { req.session.destroy(); res.redirect('/login'); });
 
 // --- PANEL PRINCIPAL ---
 app.get('/', requiereLogin, (req, res) => {
     const busqueda = req.query.buscar || '';
+    const hoy = new Date().toISOString().slice(5, 10); 
+
     const query = `
-        SELECT c.*, GROUP_CONCAT(m.id || '|' || m.nombre_mascota || '|' || COALESCE(m.foto,'') || '|' || COALESCE(m.tipo,'perro')) as lista_m
+        SELECT c.*, GROUP_CONCAT(m.id || '|' || m.nombre_mascota || '|' || COALESCE(m.foto,'') || '|' || COALESCE(m.tipo,'perro') || '|' || COALESCE(m.cumple,'') || '|' || COALESCE(m.info,'')) as lista_m
         FROM clientes c
         LEFT JOIN mascotas m ON c.id = m.cliente_id
         WHERE c.nombre LIKE ? OR c.apellido LIKE ? OR m.nombre_mascota LIKE ?
@@ -139,96 +97,112 @@ app.get('/', requiereLogin, (req, res) => {
                 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
                 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
                 <style>
-                    body { background: #FFD600; color: #000; }
-                    .navbar { background: #FFAA00; border-bottom: 4px solid #000; padding: 10px; }
-                    .card { border: 3px solid #000; border-radius: 20px; box-shadow: 5px 5px 0px #000; }
-                    .alerta-premio { background: #fff; border: 3px dashed #ff4500; color: #ff4500; font-weight: bold; animation: pulse 1s infinite; padding: 5px; border-radius: 10px; text-align: center; }
-                    @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
-                    .img-mascota { width: 50px; height: 50px; object-fit: cover; border: 2px solid #000; border-radius: 50%; background: #fff; }
+                    body { background: #FFD600; font-family: 'Segoe UI', sans-serif; }
+                    .navbar { background: #FFAA00; border-bottom: 4px solid #000; }
+                    .card { border: 3px solid #000; border-radius: 15px; }
+                    .img-mascota { width: 65px; height: 65px; object-fit: cover; border: 2px solid #000; border-radius: 50%; background: #fff; cursor: help; transition: 0.3s; }
+                    .img-mascota:hover { transform: scale(1.1); box-shadow: 0 0 15px rgba(0,0,0,0.3); }
+                    .cumple-hoy { border: 4px solid #ff4500; animation: scale 0.8s infinite alternate; }
+                    @keyframes scale { from { transform: scale(1); } to { transform: scale(1.1); } }
+                    .premio-flash { background: #fff; border: 2px dashed #ff4500; font-weight: bold; padding: 5px; border-radius: 10px; color: #ff4500; text-align: center; }
                 </style>
             </head>
             <body>
-                <nav class="navbar mb-4 shadow">
-                    <div class="container d-flex justify-content-between align-items-center">
-                        <div class="d-flex align-items-center">
-                            <img src="/portada.jpeg" height="50" class="me-2 rounded border border-dark">
-                            <h4 class="fw-bold m-0">MANADA (${stat.total || 0})</h4>
-                        </div>
-                        <a href="/logout" class="btn btn-sm btn-dark">Salir</a>
-                    </div>
-                </nav>
-                <div class="container">
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="card p-3 mb-4">
-                                <h5 class="fw-bold">Nuevo Cliente</h5>
-                                <form action="/agregar" method="POST">
-                                    <input type="text" name="nombre" class="form-control mb-2" placeholder="Nombre" required>
-                                    <input type="text" name="apellido" class="form-control mb-2" placeholder="Apellido" required>
-                                    <input type="text" name="telefono" class="form-control mb-2" placeholder="Teléfono">
-                                    <input type="text" name="direccion" class="form-control mb-2" placeholder="Dirección">
-                                    <button class="btn btn-dark w-100">REGISTRAR</button>
-                                </form>
-                            </div>
-                            <form method="GET" action="/" class="input-group mb-4">
-                                <input type="text" name="buscar" class="form-control border-dark" placeholder="Dueño o mascota..." value="${busqueda}">
-                                <button class="btn btn-dark"><i class="bi bi-search"></i></button>
+                <nav class="navbar p-2 mb-4"><div class="container d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center"><img src="/portada.jpg" height="50" class="rounded border border-dark me-2"> <h5 class="m-0 fw-bold">TOTAL: ${stat.total || 0}</h5></div>
+                    <a href="/logout" class="btn btn-sm btn-dark">Salir</a>
+                </div></nav>
+
+                <div class="container"><div class="row">
+                    <div class="col-md-4">
+                        <div class="card p-3 mb-4 shadow">
+                            <h5 class="fw-bold"><i class="bi bi-person-plus"></i> Nuevo Dueño</h5>
+                            <form action="/agregar" method="POST">
+                                <input type="text" name="nombre" class="form-control mb-2" placeholder="Nombre" required>
+                                <input type="text" name="apellido" class="form-control mb-2" placeholder="Apellido" required>
+                                <input type="text" name="telefono" class="form-control mb-2" placeholder="WhatsApp (54911...)">
+                                <button class="btn btn-dark w-100 fw-bold">REGISTRAR</button>
                             </form>
                         </div>
-                        <div class="col-md-8">
-                            <div class="bg-white p-3 rounded shadow border border-dark">
-                                <table class="table align-middle">
-                                    <thead><tr><th>CLIENTE</th><th>MASCOTAS</th><th>ACCIONES</th></tr></thead>
-                                    <tbody>`;
+                        <form method="GET" action="/" class="input-group mb-4">
+                            <input type="text" name="buscar" class="form-control border-dark shadow-sm" placeholder="Buscar dueño o perro..." value="${busqueda}">
+                            <button class="btn btn-dark"><i class="bi bi-search"></i></button>
+                        </form>
+                    </div>
+
+                    <div class="col-md-8">
+                        <div class="bg-white p-3 rounded shadow border border-dark">
+                            <table class="table align-middle">
+                                <thead class="table-dark"><tr><th>CLIENTE</th><th>MASCOTAS</th><th>ACCIONES</th></tr></thead>
+                                <tbody>`;
 
             if (filas) {
                 filas.forEach(f => {
-                    let premio = f.puntos >= 10 ? `<div class="alerta-premio mb-2">🏆 ¡PREMIO PARA ${f.nombre}! 🏆</div>` : '';
+                    let txtPremio = f.puntos >= 10 ? `<div class="premio-flash mb-2">🏆 ¡GANÓ UN PREMIO!</div>` : '';
+                    const msgWs = encodeURIComponent(`¡Hola ${f.nombre}! Tu mascota ya tiene ${f.puntos} puntos en El Club de la Manada! 🐾`);
+                    
                     html += `
                     <tr>
-                        <td>
-                            ${premio}
+                        <td style="min-width: 180px;">
+                            ${txtPremio}
                             <div class="fw-bold text-uppercase">${f.nombre} ${f.apellido}</div>
-                            <small class="text-muted d-block">${f.telefono || ''}</small>
                             <div class="mt-2 d-flex align-items-center">
-                                <span class="badge bg-dark text-warning p-2 me-2">⭐ ${f.puntos} pts</span>
+                                <span class="badge bg-dark text-warning p-2 me-2" style="font-size: 1.1rem;">⭐ ${f.puntos}</span>
                                 <form action="/sumar-punto" method="POST">
                                     <input type="hidden" name="id" value="${f.id}">
-                                    <button class="btn btn-sm btn-success rounded-circle">+</button>
+                                    <button class="btn btn-sm btn-success rounded-circle fw-bold shadow-sm">+</button>
                                 </form>
                             </div>
-                            <a href="/editar-cliente/${f.id}" class="small text-decoration-none text-primary mt-1 d-block">Editar Dueño</a>
+                            <div class="mt-2">
+                                ${f.telefono ? `<a href="https://wa.me/${f.telefono}?text=${msgWs}" target="_blank" class="btn btn-sm btn-outline-success p-1 py-0"><i class="bi bi-whatsapp"></i> WhatsApp</a>` : ''}
+                                <a href="/editar-cliente/${f.id}" class="btn btn-sm btn-link text-muted p-0 ms-2">Editar</a>
+                            </div>
                         </td>
                         <td>
-                            <div class="d-flex flex-wrap gap-2 mb-2">
+                            <div class="d-flex flex-wrap gap-3 mb-3">
                                 ${f.lista_m ? f.lista_m.split(',').map(m => {
-                                    const [mid, n, foto, tipo] = m.split('|');
-                                    let img = foto ? `/uploads/${foto}` : `/uploads/${tipo}.png`;
-                                    return `<div class="text-center position-relative">
-                                                <img src="${img}" class="img-mascota">
-                                                <div style="font-size: 10px;" class="fw-bold">${n}</div>
-                                                <a href="/eliminar-mascota/${mid}" class="position-absolute top-0 end-0 badge bg-danger rounded-circle p-1" style="font-size:8px">X</a>
+                                    const [mid, n, foto, tipo, cumple, info] = m.split('|');
+                                    const esCumple = cumple && cumple.slice(5, 10) === hoy;
+                                    let imgPath = foto ? `/uploads/${foto}` : `/uploads/${tipo}.png`;
+                                    
+                                    // Tooltip con info detallada
+                                    const tooltipText = `<b>Tipo:</b> ${tipo}<br><b>Cumple:</b> ${cumple || '-'}<br><b>Notas:</b> ${info || 'Sin notas'}`;
+
+                                    return `<div class="text-center position-relative" style="width: 70px;">
+                                                <img src="${imgPath}" class="img-mascota ${esCumple ? 'cumple-hoy' : ''}" 
+                                                     data-bs-toggle="tooltip" data-bs-html="true" title="${tooltipText}">
+                                                <div style="font-size: 11px;" class="fw-bold mt-1 ${esCumple ? 'text-danger' : ''}">${esCumple ? '🎂' : ''}${n}</div>
+                                                <a href="/eliminar-mascota/${mid}" class="position-absolute top-0 end-0 badge bg-danger rounded-circle p-1" style="font-size:8px; cursor:pointer;" onclick="return confirm('¿Borrar mascota?')">X</a>
                                             </div>`;
-                                }).join('') : '<small>Sin mascotas</small>'}
+                                }).join('') : '<small class="text-muted">No tiene mascotas</small>'}
                             </div>
-                            <form action="/agregar-mascota" method="POST" class="row g-1">
+                            <form action="/agregar-mascota" method="POST" enctype="multipart/form-data" class="bg-light p-2 rounded border border-secondary shadow-sm">
                                 <input type="hidden" name="cliente_id" value="${f.id}">
-                                <div class="col-7"><input type="text" name="nombre_mascota" class="form-control form-control-sm" placeholder="Nombre" required></div>
-                                <div class="col-5">
-                                    <select name="tipo" class="form-select form-select-sm">
-                                        <option value="perro">🐶</option><option value="gato">🐱</option><option value="otro">🐰</option>
-                                    </select>
+                                <div class="row g-1">
+                                    <div class="col-6"><input type="text" name="nombre_m" class="form-control form-control-sm" placeholder="Nombre" required></div>
+                                    <div class="col-6"><select name="tipo" class="form-select form-select-sm"><option value="perro">Perro</option><option value="gato">Gato</option><option value="otro">Otro</option></select></div>
+                                    <div class="col-6"><input type="date" name="cumple" class="form-control form-control-sm" title="Cumpleaños"></div>
+                                    <div class="col-6"><input type="file" name="foto" class="form-control form-control-sm" title="Foto"></div>
+                                    <div class="col-12"><input type="text" name="info" class="form-control form-control-sm" placeholder="Alimento, medicación, etc..."></div>
+                                    <button class="btn btn-sm btn-dark mt-1 fw-bold">Añadir Mascota</button>
                                 </div>
-                                <button class="btn btn-sm btn-dark mt-1">Añadir</button>
                             </form>
                         </td>
                         <td>
-                            <a href="/eliminar/${f.id}" class="btn btn-sm text-danger" onclick="return confirm('¿Eliminar dueño?')"><i class="bi bi-trash"></i></a>
+                            <a href="/eliminar/${f.id}" class="btn btn-sm text-danger" onclick="return confirm('¿Borrar dueño?')"><i class="bi bi-trash"></i></a>
                         </td>
                     </tr>`;
                 });
             }
-            html += `</tbody></table></div></div></div></div></body></html>`;
+            html += `</tbody></table></div></div></div></div>
+            <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+            <script>
+                var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+                var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                    return new bootstrap.Tooltip(tooltipTriggerEl)
+                })
+            </script>
+            </body></html>`;
             res.send(html);
         });
     });
@@ -236,17 +210,17 @@ app.get('/', requiereLogin, (req, res) => {
 
 // --- ACCIONES ---
 app.post('/agregar', requiereLogin, (req, res) => {
-    const { nombre, apellido, telefono, direccion } = req.body;
-    db.run("INSERT INTO clientes (nombre, apellido, telefono, direccion) VALUES (?,?,?,?)", [nombre, apellido, telefono, direccion], () => res.redirect('/'));
+    db.run("INSERT INTO clientes (nombre, apellido, telefono) VALUES (?,?,?)", [req.body.nombre, req.body.apellido, req.body.telefono], () => res.redirect('/'));
 });
 
 app.post('/sumar-punto', requiereLogin, (req, res) => {
     db.run("UPDATE clientes SET puntos = puntos + 1 WHERE id = ?", [req.body.id], () => res.redirect('/'));
 });
 
-app.post('/agregar-mascota', requiereLogin, (req, res) => {
-    const { cliente_id, nombre_mascota, tipo } = req.body;
-    db.run("INSERT INTO mascotas (nombre_mascota, cliente_id, tipo) VALUES (?,?,?)", [nombre_mascota, cliente_id, tipo], () => res.redirect('/'));
+app.post('/agregar-mascota', requiereLogin, upload.single('foto'), (req, res) => {
+    const { cliente_id, nombre_m, tipo, cumple, info } = req.body;
+    const foto = req.file ? req.file.filename : '';
+    db.run("INSERT INTO mascotas (nombre_mascota, tipo, cumple, info, foto, cliente_id) VALUES (?,?,?,?,?,?)", [nombre_m, tipo, cumple, info, foto, cliente_id], () => res.redirect('/'));
 });
 
 app.get('/eliminar-mascota/:id', requiereLogin, (req, res) => {
@@ -258,15 +232,14 @@ app.get('/editar-cliente/:id', requiereLogin, (req, res) => {
         res.send(`
             <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
             <body style="background:#FFAA00" class="p-5">
-                <div class="card mx-auto p-4 border-dark" style="max-width:400px; border:3px solid #000; border-radius:20px">
-                    <h3>Editar Dueño</h3>
+                <div class="card mx-auto p-4 border-dark shadow" style="max-width:400px; border:3px solid #000; border-radius:20px">
+                    <h3 class="fw-bold">Editar Dueño</h3>
                     <form action="/editar-cliente/${c.id}" method="POST">
-                        <input name="nombre" class="form-control mb-2" value="${c.nombre}">
-                        <input name="apellido" class="form-control mb-2" value="${c.apellido}">
-                        <input name="telefono" class="form-control mb-2" value="${c.telefono || ''}">
-                        <input name="direccion" class="form-control mb-3" value="${c.direccion || ''}">
-                        <button class="btn btn-dark w-100">GUARDAR</button>
-                        <a href="/" class="btn btn-link w-100 mt-2 text-dark">Volver</a>
+                        <label class="small fw-bold">Nombre</label><input name="nombre" class="form-control mb-2" value="${c.nombre}">
+                        <label class="small fw-bold">Apellido</label><input name="apellido" class="form-control mb-2" value="${c.apellido}">
+                        <label class="small fw-bold">WhatsApp</label><input name="telefono" class="form-control mb-3" value="${c.telefono || ''}">
+                        <button class="btn btn-dark w-100">GUARDAR CAMBIOS</button>
+                        <a href="/" class="btn btn-link w-100 mt-2 text-dark">Cancelar</a>
                     </form>
                 </div>
             </body>
@@ -275,8 +248,8 @@ app.get('/editar-cliente/:id', requiereLogin, (req, res) => {
 });
 
 app.post('/editar-cliente/:id', requiereLogin, (req, res) => {
-    const { nombre, apellido, telefono, direccion } = req.body;
-    db.run("UPDATE clientes SET nombre=?, apellido=?, telefono=?, direccion=? WHERE id=?", [nombre, apellido, telefono, direccion, req.params.id], () => res.redirect('/'));
+    const { nombre, apellido, telefono } = req.body;
+    db.run("UPDATE clientes SET nombre=?, apellido=?, telefono=? WHERE id=?", [nombre, apellido, telefono, req.params.id], () => res.redirect('/'));
 });
 
 app.get('/eliminar/:id', requiereLogin, (req, res) => {
@@ -285,5 +258,5 @@ app.get('/eliminar/:id', requiereLogin, (req, res) => {
     });
 });
 
-app.listen(port, () => console.log(`Manada activa en puerto ${port}`));
+app.listen(port, () => console.log(`Manada activa!`));
 
