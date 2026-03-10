@@ -14,7 +14,8 @@ if (!fs.existsSync('./public/uploads')) {
     fs.mkdirSync('./public/uploads', { recursive: true });
 }
 
-const db = new sqlite3.Database('./petshop_final.db');
+// CAMBIAMOS EL NOMBRE AQUÍ PARA RESETEAR TODO
+const db = new sqlite3.Database('./manada_v3.db');
 
 db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS clientes (
@@ -29,11 +30,19 @@ db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS usuarios (
         id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, password TEXT, rol TEXT
     )`);
+
+    // Insertar usuarios por defecto si no existen
+    db.get("SELECT count(*) as count FROM usuarios", (err, row) => {
+        if (row && row.count === 0) {
+            db.run("INSERT INTO usuarios (username, password, rol) VALUES ('admin', 'admin123', 'desarrollador')");
+            db.run("INSERT INTO usuarios (username, password, rol) VALUES ('dueno', 'manada2026', 'usuario')");
+        }
+    });
 });
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('public'));
-app.use(session({ secret: 'manada-2026', resave: false, saveUninitialized: true }));
+app.use(session({ secret: 'manada-secret-2026', resave: false, saveUninitialized: true }));
 
 const storage = multer.diskStorage({
     destination: 'public/uploads/',
@@ -52,11 +61,12 @@ app.get('/login', (req, res) => {
         <style>body{background:#FFAA00; height:100vh; display:flex; align-items:center; font-family:sans-serif;}</style>
         <div class="container text-center"><div class="card mx-auto shadow-lg border-0" style="max-width:350px; border-radius:20px">
             <div class="card-body p-5">
-                <img src="/portada.jpeg" class="img-fluid mb-4 rounded border border-dark">
+                <img src="/portada.jpg" class="img-fluid mb-4 rounded border border-dark">
+                <h3 class="fw-bold mb-4 text-dark">ENTRAR</h3>
                 <form action="/login" method="POST">
-                <input type="text" name="u" class="form-control mb-3" placeholder="Usuario" required>
-                    <input type="password" name="p" class="form-control mb-4" placeholder="Contraseña" required>
-                    <button class="btn btn-dark w-100 fw-bold">ENTRAR</button>
+                    <input type="text" name="usuario" class="form-control mb-3" placeholder="Usuario" required>
+                    <input type="password" name="password" class="form-control mb-4" placeholder="Contraseña" required>
+                    <button class="btn btn-dark w-100 fw-bold">INGRESAR</button>
                 </form>
             </div>
         </div></div>
@@ -64,10 +74,15 @@ app.get('/login', (req, res) => {
 });
 
 app.post('/login', (req, res) => {
-    const { u, p } = req.body;
-    db.get("SELECT * FROM usuarios WHERE username=? AND password=?", [u, p], (err, user) => {
-        if (user) { req.session.logueado = true; req.session.rol = user.rol; res.redirect('/'); }
-        else { res.send('Error. <a href="/login">Volver</a>'); }
+    const { usuario, password } = req.body;
+    db.get("SELECT * FROM usuarios WHERE username=? AND password=?", [usuario, password], (err, user) => {
+        if (user) { 
+            req.session.logueado = true; 
+            req.session.rol = user.rol; 
+            res.redirect('/'); 
+        } else { 
+            res.send('Usuario o clave incorrectos. <a href="/login">Volver</a>'); 
+        }
     });
 });
 
@@ -101,15 +116,18 @@ app.get('/', requiereLogin, (req, res) => {
                     .navbar { background: #FFAA00; border-bottom: 4px solid #000; }
                     .card { border: 3px solid #000; border-radius: 15px; }
                     .img-mascota { width: 65px; height: 65px; object-fit: cover; border: 2px solid #000; border-radius: 50%; background: #fff; cursor: help; transition: 0.3s; }
-                    .img-mascota:hover { transform: scale(1.1); box-shadow: 0 0 15px rgba(0,0,0,0.3); }
+                    .img-mascota:hover { transform: scale(1.1); }
                     .cumple-hoy { border: 4px solid #ff4500; animation: scale 0.8s infinite alternate; }
                     @keyframes scale { from { transform: scale(1); } to { transform: scale(1.1); } }
                     .premio-flash { background: #fff; border: 2px dashed #ff4500; font-weight: bold; padding: 5px; border-radius: 10px; color: #ff4500; text-align: center; }
                 </style>
             </head>
             <body>
-                <nav class="navbar p-2 mb-4"><div class="container d-flex justify-content-between align-items-center">
-                    <div class="d-flex align-items-center"><img src="/portada.jpeg" height="50" class="rounded border border-dark me-2"> <h5 class="m-0 fw-bold">TOTAL: ${stat.total || 0}</h5></div>
+                <nav class="navbar p-2 mb-4 shadow-sm"><div class="container d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        <img src="/portada.jpg" height="50" class="rounded border border-dark me-2"> 
+                        <h5 class="m-0 fw-bold">MANADA: ${stat ? stat.total : 0}</h5>
+                    </div>
                     <a href="/logout" class="btn btn-sm btn-dark">Salir</a>
                 </div></nav>
 
@@ -121,11 +139,12 @@ app.get('/', requiereLogin, (req, res) => {
                                 <input type="text" name="nombre" class="form-control mb-2" placeholder="Nombre" required>
                                 <input type="text" name="apellido" class="form-control mb-2" placeholder="Apellido" required>
                                 <input type="text" name="telefono" class="form-control mb-2" placeholder="WhatsApp (54911...)">
+                                <input type="text" name="direccion" class="form-control mb-2" placeholder="Dirección">
                                 <button class="btn btn-dark w-100 fw-bold">REGISTRAR</button>
                             </form>
                         </div>
                         <form method="GET" action="/" class="input-group mb-4">
-                            <input type="text" name="buscar" class="form-control border-dark shadow-sm" placeholder="Buscar dueño o perro..." value="${busqueda}">
+                            <input type="text" name="buscar" class="form-control border-dark shadow-sm" placeholder="Dueño o perro..." value="${busqueda}">
                             <button class="btn btn-dark"><i class="bi bi-search"></i></button>
                         </form>
                     </div>
@@ -138,7 +157,7 @@ app.get('/', requiereLogin, (req, res) => {
 
             if (filas) {
                 filas.forEach(f => {
-                    let txtPremio = f.puntos >= 10 ? `<div class="premio-flash mb-2">🏆 ¡GANÓ UN PREMIO!</div>` : '';
+                    let txtPremio = f.puntos >= 10 ? `<div class="premio-flash mb-2 text-uppercase">🏆 ¡FELICIDADES ${f.nombre}! 🏆</div>` : '';
                     const msgWs = encodeURIComponent(`¡Hola ${f.nombre}! Tu mascota ya tiene ${f.puntos} puntos en El Club de la Manada! 🐾`);
                     
                     html += `
@@ -146,6 +165,7 @@ app.get('/', requiereLogin, (req, res) => {
                         <td style="min-width: 180px;">
                             ${txtPremio}
                             <div class="fw-bold text-uppercase">${f.nombre} ${f.apellido}</div>
+                            <small class="text-muted d-block">${f.direccion || ''}</small>
                             <div class="mt-2 d-flex align-items-center">
                                 <span class="badge bg-dark text-warning p-2 me-2" style="font-size: 1.1rem;">⭐ ${f.puntos}</span>
                                 <form action="/sumar-punto" method="POST">
@@ -163,10 +183,9 @@ app.get('/', requiereLogin, (req, res) => {
                                 ${f.lista_m ? f.lista_m.split(',').map(m => {
                                     const [mid, n, foto, tipo, cumple, info] = m.split('|');
                                     const esCumple = cumple && cumple.slice(5, 10) === hoy;
-                                    let imgPath = foto ? `/uploads/${foto}` : `/uploads/${tipo}.png`;
+                                    let imgPath = foto ? \`/uploads/\${foto}\` : \`/uploads/\${tipo}.png\`;
                                     
-                                    // Tooltip con info detallada
-                                    const tooltipText = `<b>Tipo:</b> ${tipo}<br><b>Cumple:</b> ${cumple || '-'}<br><b>Notas:</b> ${info || 'Sin notas'}`;
+                                    const tooltipText = \`<b>Tipo:</b> \${tipo}<br><b>Cumple:</b> \${cumple || '-'}<br><b>Notas:</b> \${info || 'Sin notas'}\`;
 
                                     return `<div class="text-center position-relative" style="width: 70px;">
                                                 <img src="${imgPath}" class="img-mascota ${esCumple ? 'cumple-hoy' : ''}" 
@@ -174,7 +193,7 @@ app.get('/', requiereLogin, (req, res) => {
                                                 <div style="font-size: 11px;" class="fw-bold mt-1 ${esCumple ? 'text-danger' : ''}">${esCumple ? '🎂' : ''}${n}</div>
                                                 <a href="/eliminar-mascota/${mid}" class="position-absolute top-0 end-0 badge bg-danger rounded-circle p-1" style="font-size:8px; cursor:pointer;" onclick="return confirm('¿Borrar mascota?')">X</a>
                                             </div>`;
-                                }).join('') : '<small class="text-muted">No tiene mascotas</small>'}
+                                }).join('') : '<small class="text-muted">Sin mascotas</small>'}
                             </div>
                             <form action="/agregar-mascota" method="POST" enctype="multipart/form-data" class="bg-light p-2 rounded border border-secondary shadow-sm">
                                 <input type="hidden" name="cliente_id" value="${f.id}">
@@ -183,7 +202,7 @@ app.get('/', requiereLogin, (req, res) => {
                                     <div class="col-6"><select name="tipo" class="form-select form-select-sm"><option value="perro">Perro</option><option value="gato">Gato</option><option value="otro">Otro</option></select></div>
                                     <div class="col-6"><input type="date" name="cumple" class="form-control form-control-sm" title="Cumpleaños"></div>
                                     <div class="col-6"><input type="file" name="foto" class="form-control form-control-sm" title="Foto"></div>
-                                    <div class="col-12"><input type="text" name="info" class="form-control form-control-sm" placeholder="Alimento, medicación, etc..."></div>
+                                    <div class="col-12"><input type="text" name="info" class="form-control form-control-sm" placeholder="Info: alimento, notas..."></div>
                                     <button class="btn btn-sm btn-dark mt-1 fw-bold">Añadir Mascota</button>
                                 </div>
                             </form>
@@ -210,7 +229,8 @@ app.get('/', requiereLogin, (req, res) => {
 
 // --- ACCIONES ---
 app.post('/agregar', requiereLogin, (req, res) => {
-    db.run("INSERT INTO clientes (nombre, apellido, telefono) VALUES (?,?,?)", [req.body.nombre, req.body.apellido, req.body.telefono], () => res.redirect('/'));
+    const { nombre, apellido, telefono, direccion } = req.body;
+    db.run("INSERT INTO clientes (nombre, apellido, telefono, direccion) VALUES (?,?,?,?)", [nombre, apellido, telefono, direccion], () => res.redirect('/'));
 });
 
 app.post('/sumar-punto', requiereLogin, (req, res) => {
@@ -237,9 +257,10 @@ app.get('/editar-cliente/:id', requiereLogin, (req, res) => {
                     <form action="/editar-cliente/${c.id}" method="POST">
                         <label class="small fw-bold">Nombre</label><input name="nombre" class="form-control mb-2" value="${c.nombre}">
                         <label class="small fw-bold">Apellido</label><input name="apellido" class="form-control mb-2" value="${c.apellido}">
-                        <label class="small fw-bold">WhatsApp</label><input name="telefono" class="form-control mb-3" value="${c.telefono || ''}">
+                        <label class="small fw-bold">WhatsApp</label><input name="telefono" class="form-control mb-2" value="${c.telefono || ''}">
+                        <label class="small fw-bold">Dirección</label><input name="direccion" class="form-control mb-3" value="${c.direccion || ''}">
                         <button class="btn btn-dark w-100">GUARDAR CAMBIOS</button>
-                        <a href="/" class="btn btn-link w-100 mt-2 text-dark">Cancelar</a>
+                        <a href="/" class="btn btn-link w-100 mt-2 text-dark text-decoration-none">Cancelar</a>
                     </form>
                 </div>
             </body>
@@ -248,8 +269,8 @@ app.get('/editar-cliente/:id', requiereLogin, (req, res) => {
 });
 
 app.post('/editar-cliente/:id', requiereLogin, (req, res) => {
-    const { nombre, apellido, telefono } = req.body;
-    db.run("UPDATE clientes SET nombre=?, apellido=?, telefono=? WHERE id=?", [nombre, apellido, telefono, req.params.id], () => res.redirect('/'));
+    const { nombre, apellido, telefono, direccion } = req.body;
+    db.run("UPDATE clientes SET nombre=?, apellido=?, telefono=?, direccion=? WHERE id=?", [nombre, apellido, telefono, direccion, req.params.id], () => res.redirect('/'));
 });
 
 app.get('/eliminar/:id', requiereLogin, (req, res) => {
@@ -259,6 +280,3 @@ app.get('/eliminar/:id', requiereLogin, (req, res) => {
 });
 
 app.listen(port, () => console.log(`Manada activa!`));
-
-
-
