@@ -86,7 +86,7 @@ app.get('/login', (req, res) => {
         <div class="container text-center">
             <div class="card mx-auto" style="max-width: 400px;">
                 <div class="card-body p-5">
-                    <img src="/portada.jpg" class="img-fluid mb-4 rounded shadow-sm" style="border: 2px solid #000">
+                    <img src="/portada.jpeg" class="img-fluid mb-4 rounded shadow-sm" style="border: 2px solid #000">
                     <h2 class="mb-4">EL CLUB</h2>
                     <form action="/login" method="POST">
                         <input type="text" name="usuario" class="form-control mb-3" placeholder="Usuario" required>
@@ -151,7 +151,7 @@ app.get('/', requiereLogin, (req, res) => {
                 <nav class="navbar mb-4 shadow">
                     <div class="container d-flex justify-content-between align-items-center">
                         <div class="d-flex align-items-center">
-                            <img src="/portada.jpg" height="50" class="me-2 rounded border border-dark">
+                            <img src="/portada.jpeg" height="50" class="me-2 rounded border border-dark">
                             <h4 class="fw-bold m-0">MANADA (${stat.total || 0})</h4>
                         </div>
                         <a href="/logout" class="btn btn-sm btn-dark">Salir</a>
@@ -286,3 +286,4 @@ app.get('/eliminar/:id', requiereLogin, (req, res) => {
 });
 
 app.listen(port, () => console.log(`Manada activa en puerto ${port}`));
+
