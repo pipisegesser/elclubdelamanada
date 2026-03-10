@@ -14,7 +14,7 @@ if (!fs.existsSync('./public/uploads')) {
     fs.mkdirSync('./public/uploads', { recursive: true });
 }
 
-const db = new sqlite3.Database('./petshop.db');
+const db = new sqlite3.Database('./petshop_final.db');
 
 db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS clientes (
@@ -259,5 +259,6 @@ app.get('/eliminar/:id', requiereLogin, (req, res) => {
 });
 
 app.listen(port, () => console.log(`Manada activa!`));
+
 
 
