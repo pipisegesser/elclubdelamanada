@@ -9,13 +9,12 @@ const fs = require('fs');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// --- CARPETAS ---
 if (!fs.existsSync('./public/uploads')) {
     fs.mkdirSync('./public/uploads', { recursive: true });
 }
 
-// CAMBIAMOS EL NOMBRE AQUÍ PARA RESETEAR TODO
-const db = new sqlite3.Database('./manada_v3.db');
+// CAMBIAMOS EL NOMBRE A V4 PARA LIMPIEZA TOTAL
+const db = new sqlite3.Database('./manada_v4.db');
 
 db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS clientes (
@@ -31,7 +30,6 @@ db.serialize(() => {
         id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, password TEXT, rol TEXT
     )`);
 
-    // Insertar usuarios por defecto si no existen
     db.get("SELECT count(*) as count FROM usuarios", (err, row) => {
         if (row && row.count === 0) {
             db.run("INSERT INTO usuarios (username, password, rol) VALUES ('admin', 'admin123', 'desarrollador')");
@@ -42,7 +40,7 @@ db.serialize(() => {
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('public'));
-app.use(session({ secret: 'manada-secret-2026', resave: false, saveUninitialized: true }));
+app.use(session({ secret: 'manada-2026-safe', resave: false, saveUninitialized: true }));
 
 const storage = multer.diskStorage({
     destination: 'public/uploads/',
@@ -54,7 +52,6 @@ function requiereLogin(req, res, next) {
     if (req.session.logueado) next(); else res.redirect('/login');
 }
 
-// --- LOGIN ---
 app.get('/login', (req, res) => {
     res.send(`
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -88,7 +85,6 @@ app.post('/login', (req, res) => {
 
 app.get('/logout', (req, res) => { req.session.destroy(); res.redirect('/login'); });
 
-// --- PANEL PRINCIPAL ---
 app.get('/', requiereLogin, (req, res) => {
     const busqueda = req.query.buscar || '';
     const hoy = new Date().toISOString().slice(5, 10); 
@@ -115,7 +111,7 @@ app.get('/', requiereLogin, (req, res) => {
                     body { background: #FFD600; font-family: 'Segoe UI', sans-serif; }
                     .navbar { background: #FFAA00; border-bottom: 4px solid #000; }
                     .card { border: 3px solid #000; border-radius: 15px; }
-                    .img-mascota { width: 65px; height: 65px; object-fit: cover; border: 2px solid #000; border-radius: 50%; background: #fff; cursor: help; transition: 0.3s; }
+                    .img-mascota { width: 65px; height: 65px; object-fit: cover; border: 2px solid #000; border-radius: 50%; background: #fff; transition: 0.3s; }
                     .img-mascota:hover { transform: scale(1.1); }
                     .cumple-hoy { border: 4px solid #ff4500; animation: scale 0.8s infinite alternate; }
                     @keyframes scale { from { transform: scale(1); } to { transform: scale(1.1); } }
@@ -126,7 +122,7 @@ app.get('/', requiereLogin, (req, res) => {
                 <nav class="navbar p-2 mb-4 shadow-sm"><div class="container d-flex justify-content-between align-items-center">
                     <div class="d-flex align-items-center">
                         <img src="/portada.jpg" height="50" class="rounded border border-dark me-2"> 
-                        <h5 class="m-0 fw-bold">MANADA: ${stat ? stat.total : 0}</h5>
+                        <h5 class="m-0 fw-bold text-dark">MANADA: ${stat ? stat.total : 0}</h5>
                     </div>
                     <a href="/logout" class="btn btn-sm btn-dark">Salir</a>
                 </div></nav>
@@ -144,7 +140,7 @@ app.get('/', requiereLogin, (req, res) => {
                             </form>
                         </div>
                         <form method="GET" action="/" class="input-group mb-4">
-                            <input type="text" name="buscar" class="form-control border-dark shadow-sm" placeholder="Dueño o perro..." value="${busqueda}">
+                            <input type="text" name="buscar" class="form-control border-dark shadow-sm" placeholder="Buscar..." value="${busqueda}">
                             <button class="btn btn-dark"><i class="bi bi-search"></i></button>
                         </form>
                     </div>
@@ -157,12 +153,12 @@ app.get('/', requiereLogin, (req, res) => {
 
             if (filas) {
                 filas.forEach(f => {
-                    let txtPremio = f.puntos >= 10 ? `<div class="premio-flash mb-2 text-uppercase">🏆 ¡FELICIDADES ${f.nombre}! 🏆</div>` : '';
-                    const msgWs = encodeURIComponent(`¡Hola ${f.nombre}! Tu mascota ya tiene ${f.puntos} puntos en El Club de la Manada! 🐾`);
+                    let txtPremio = f.puntos >= 10 ? '<div class="premio-flash mb-2">🏆 ¡GANÓ UN PREMIO! 🏆</div>' : '';
+                    const msgWs = encodeURIComponent("¡Hola! Tu mascota tiene puntos acumulados en El Club de la Manada 🐾");
                     
                     html += `
                     <tr>
-                        <td style="min-width: 180px;">
+                        <td>
                             ${txtPremio}
                             <div class="fw-bold text-uppercase">${f.nombre} ${f.apellido}</div>
                             <small class="text-muted d-block">${f.direccion || ''}</small>
@@ -170,64 +166,53 @@ app.get('/', requiereLogin, (req, res) => {
                                 <span class="badge bg-dark text-warning p-2 me-2" style="font-size: 1.1rem;">⭐ ${f.puntos}</span>
                                 <form action="/sumar-punto" method="POST">
                                     <input type="hidden" name="id" value="${f.id}">
-                                    <button class="btn btn-sm btn-success rounded-circle fw-bold shadow-sm">+</button>
+                                    <button class="btn btn-sm btn-success rounded-circle">+</button>
                                 </form>
                             </div>
                             <div class="mt-2">
-                                ${f.telefono ? `<a href="https://wa.me/${f.telefono}?text=${msgWs}" target="_blank" class="btn btn-sm btn-outline-success p-1 py-0"><i class="bi bi-whatsapp"></i> WhatsApp</a>` : ''}
-                                <a href="/editar-cliente/${f.id}" class="btn btn-sm btn-link text-muted p-0 ms-2">Editar</a>
+                                ${f.telefono ? '<a href="https://wa.me/'+f.telefono+'?text='+msgWs+'" target="_blank" class="btn btn-sm btn-outline-success p-1 py-0 small text-decoration-none">WhatsApp</a>' : ''}
+                                <a href="/editar-cliente/${f.id}" class="btn btn-sm btn-link text-muted p-0 ms-2 small">Editar</a>
                             </div>
                         </td>
                         <td>
                             <div class="d-flex flex-wrap gap-3 mb-3">
                                 ${f.lista_m ? f.lista_m.split(',').map(m => {
-                                    const [mid, n, foto, tipo, cumple, info] = m.split('|');
+                                    const parts = m.split('|');
+                                    const mid = parts[0], n = parts[1], foto = parts[2], tipo = parts[3], cumple = parts[4], info = parts[5];
                                     const esCumple = cumple && cumple.slice(5, 10) === hoy;
-                                    let imgPath = foto ? \`/uploads/\${foto}\` : \`/uploads/\${tipo}.png\`;
+                                    let imgPath = foto ? '/uploads/' + foto : '/uploads/' + tipo + '.png';
                                     
-                                    const tooltipText = \`<b>Tipo:</b> \${tipo}<br><b>Cumple:</b> \${cumple || '-'}<br><b>Notas:</b> \${info || 'Sin notas'}\`;
-
-                                    return `<div class="text-center position-relative" style="width: 70px;">
-                                                <img src="${imgPath}" class="img-mascota ${esCumple ? 'cumple-hoy' : ''}" 
-                                                     data-bs-toggle="tooltip" data-bs-html="true" title="${tooltipText}">
-                                                <div style="font-size: 11px;" class="fw-bold mt-1 ${esCumple ? 'text-danger' : ''}">${esCumple ? '🎂' : ''}${n}</div>
-                                                <a href="/eliminar-mascota/${mid}" class="position-absolute top-0 end-0 badge bg-danger rounded-circle p-1" style="font-size:8px; cursor:pointer;" onclick="return confirm('¿Borrar mascota?')">X</a>
-                                            </div>`;
+                                    return '<div class="text-center position-relative" style="width: 70px;">' +
+                                                '<img src="' + imgPath + '" class="img-mascota ' + (esCumple ? 'cumple-hoy' : '') + '" title="' + info + '">' +
+                                                '<div style="font-size: 11px;" class="fw-bold mt-1 ' + (esCumple ? 'text-danger' : '') + '">' + (esCumple ? '🎂' : '') + n + '</div>' +
+                                                '<a href="/eliminar-mascota/' + mid + '" class="position-absolute top-0 end-0 badge bg-danger rounded-circle p-1" style="font-size:8px; text-decoration:none">X</a>' +
+                                            '</div>';
                                 }).join('') : '<small class="text-muted">Sin mascotas</small>'}
                             </div>
-                            <form action="/agregar-mascota" method="POST" enctype="multipart/form-data" class="bg-light p-2 rounded border border-secondary shadow-sm">
+                            <form action="/agregar-mascota" method="POST" enctype="multipart/form-data" class="bg-light p-2 rounded border shadow-sm">
                                 <input type="hidden" name="cliente_id" value="${f.id}">
                                 <div class="row g-1">
                                     <div class="col-6"><input type="text" name="nombre_m" class="form-control form-control-sm" placeholder="Nombre" required></div>
                                     <div class="col-6"><select name="tipo" class="form-select form-select-sm"><option value="perro">Perro</option><option value="gato">Gato</option><option value="otro">Otro</option></select></div>
-                                    <div class="col-6"><input type="date" name="cumple" class="form-control form-control-sm" title="Cumpleaños"></div>
-                                    <div class="col-6"><input type="file" name="foto" class="form-control form-control-sm" title="Foto"></div>
-                                    <div class="col-12"><input type="text" name="info" class="form-control form-control-sm" placeholder="Info: alimento, notas..."></div>
-                                    <button class="btn btn-sm btn-dark mt-1 fw-bold">Añadir Mascota</button>
+                                    <div class="col-6"><input type="date" name="cumple" class="form-control form-control-sm"></div>
+                                    <div class="col-6"><input type="file" name="foto" class="form-control form-control-sm"></div>
+                                    <div class="col-12"><input type="text" name="info" class="form-control form-control-sm" placeholder="Info/Alimento"></div>
+                                    <button class="btn btn-sm btn-dark mt-1 fw-bold">Añadir</button>
                                 </div>
                             </form>
                         </td>
-                        <td>
-                            <a href="/eliminar/${f.id}" class="btn btn-sm text-danger" onclick="return confirm('¿Borrar dueño?')"><i class="bi bi-trash"></i></a>
-                        </td>
+                        <td><a href="/eliminar/${f.id}" class="text-danger" onclick="return confirm('¿Borrar?')"><i class="bi bi-trash"></i></a></td>
                     </tr>`;
                 });
             }
             html += `</tbody></table></div></div></div></div>
             <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-            <script>
-                var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-                var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-                    return new bootstrap.Tooltip(tooltipTriggerEl)
-                })
-            </script>
             </body></html>`;
             res.send(html);
         });
     });
 });
 
-// --- ACCIONES ---
 app.post('/agregar', requiereLogin, (req, res) => {
     const { nombre, apellido, telefono, direccion } = req.body;
     db.run("INSERT INTO clientes (nombre, apellido, telefono, direccion) VALUES (?,?,?,?)", [nombre, apellido, telefono, direccion], () => res.redirect('/'));
@@ -255,12 +240,11 @@ app.get('/editar-cliente/:id', requiereLogin, (req, res) => {
                 <div class="card mx-auto p-4 border-dark shadow" style="max-width:400px; border:3px solid #000; border-radius:20px">
                     <h3 class="fw-bold">Editar Dueño</h3>
                     <form action="/editar-cliente/${c.id}" method="POST">
-                        <label class="small fw-bold">Nombre</label><input name="nombre" class="form-control mb-2" value="${c.nombre}">
-                        <label class="small fw-bold">Apellido</label><input name="apellido" class="form-control mb-2" value="${c.apellido}">
-                        <label class="small fw-bold">WhatsApp</label><input name="telefono" class="form-control mb-2" value="${c.telefono || ''}">
-                        <label class="small fw-bold">Dirección</label><input name="direccion" class="form-control mb-3" value="${c.direccion || ''}">
-                        <button class="btn btn-dark w-100">GUARDAR CAMBIOS</button>
-                        <a href="/" class="btn btn-link w-100 mt-2 text-dark text-decoration-none">Cancelar</a>
+                        <input name="nombre" class="form-control mb-2" value="${c.nombre}">
+                        <input name="apellido" class="form-control mb-2" value="${c.apellido}">
+                        <input name="telefono" class="form-control mb-2" value="${c.telefono || ''}">
+                        <input name="direccion" class="form-control mb-3" value="${c.direccion || ''}">
+                        <button class="btn btn-dark w-100">GUARDAR</button>
                     </form>
                 </div>
             </body>
