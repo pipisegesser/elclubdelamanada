@@ -118,7 +118,7 @@ app.get('/', requiereLogin, (req, res) => {
         '@keyframes scale{from{transform:scale(1);}to{transform:scale(1.1);}}</style></head><body>' +
        '<nav class="navbar p-2 mb-4 shadow"><div class="container d-flex justify-content-between align-items-center">' +
        '<div class="d-flex align-items-center"><img src="/portada.jpeg" height="50" class="rounded border border-dark me-2"><h5 class="m-0 fw-bold">ESPACIO ANIMAL</h5></div>' +
-         '<div>' + 
+         '<div>' 
         // Solo si es admin ve este botón
         (req.session.rol === 'admin' ? '<a href="/gestion-usuarios" class="btn btn-sm btn-outline-dark me-2"><i class="bi bi-people-fill"></i> Usuarios</a>' : '') +
         '<a href="/exportar" class="btn btn-sm btn-success me-2"><i class="bi bi-file-earmark-excel"></i> Excel Full</a>' +
@@ -287,5 +287,6 @@ app.get('/borrar-usuario/:id', requiereLogin, (req, res) => {
 
 
 app.listen(port, () => console.log('Manada V11 Live!'));
+
 
 
