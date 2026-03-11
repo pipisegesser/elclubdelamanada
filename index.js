@@ -116,9 +116,14 @@ app.get('/', requiereLogin, (req, res) => {
         '.img-box{width:65px;height:65px;border:2px solid #000;border-radius:50%;overflow:hidden;background:#fff;display:flex;align-items:center;justify-content:center;}' +
         '.img-mascota{width:100%;height:100%;object-fit:cover;}.cumple-hoy{border:4px solid #ff4500;animation:scale 0.8s infinite alternate;}' +
         '@keyframes scale{from{transform:scale(1);}to{transform:scale(1.1);}}</style></head><body>' +
-        '<nav class="navbar p-2 mb-4 shadow"><div class="container d-flex justify-content-between align-items-center">' +
-        '<div class="d-flex align-items-center"><img src="/portada.jpeg" height="50" class="rounded border border-dark me-2"><h5 class="m-0 fw-bold">ESPACIO ANIMAL</h5></div>' +
-        '<div><a href="/exportar" class="btn btn-sm btn-success me-2"><i class="bi bi-file-earmark-excel"></i> Excel</a><a href="/logout" class="btn btn-sm btn-dark">Salir</a></div></div></nav>' +
+       '<nav class="navbar p-2 mb-4 shadow"><div class="container d-flex justify-content-between align-items-center">' +
+       '<div class="d-flex align-items-center"><img src="/portada.jpeg" height="50" class="rounded border border-dark me-2"><h5 class="m-0 fw-bold">ESPACIO ANIMAL</h5></div>' +
+         '<div>' + 
+        // Solo si es admin ve este botón
+        (req.session.rol === 'admin' ? '<a href="/gestion-usuarios" class="btn btn-sm btn-outline-dark me-2"><i class="bi bi-people-fill"></i> Usuarios</a>' : '') +
+        '<a href="/exportar" class="btn btn-sm btn-success me-2"><i class="bi bi-file-earmark-excel"></i> Excel Full</a>' +
+        '<a href="/logout" class="btn btn-sm btn-dark">Salir</a>' +
+    '</div></div></nav>' +' +
         '<div class="container"><div class="row"><div class="col-md-4">' +
         '<div class="card p-3 mb-3 shadow"><h5>Nuevo Dueño</h5><form action="/agregar" method="POST">' +
         '<input name="nombre" class="form-control mb-2 border-dark" placeholder="Nombre" required><input name="apellido" class="form-control mb-2 border-dark" placeholder="Apellido" required>' +
@@ -235,5 +240,52 @@ app.post('/editar-cliente/:id', requiereLogin, (req, res) => {
     [nombre, apellido, telefono, direccion, req.params.id], () => res.redirect('/'));
 });
 
+
+
+// 1. Pantalla principal de Gestión (Solo accesible por Admin)
+app.get('/gestion-usuarios', requiereLogin, (req, res) => {
+    if (req.session.rol !== 'admin') return res.send("No tenés permiso para entrar acá.");
+
+    db.all("SELECT id, username, rol FROM usuarios", (err, users) => {
+        let html = '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">' +
+        '<body style="background:#FFD600; padding:40px;"><div class="container"><div class="card p-4 shadow border-dark" style="border-radius:20px;">' +
+        '<div class="d-flex justify-content-between align-items-center mb-4">' +
+        '<h2>Gestión de Personal</h2><a href="/" class="btn btn-dark">Volver al Panel</a></div>' +
+        '<div class="row"><div class="col-md-4"><div class="card p-3 border-dark mb-3"><h5>Nuevo Usuario</h5>' +
+        '<form action="/crear-usuario" method="POST">' +
+        '<input name="user" class="form-control mb-2 border-dark" placeholder="Nombre (ej: juan)" required>' +
+        '<input name="pass" type="password" class="form-control mb-2 border-dark" placeholder="Clave" required>' +
+        '<select name="rol" class="form-select mb-3 border-dark"><option value="usuario">Usuario Común</option><option value="admin">Administrador</option></select>' +
+        '<button class="btn btn-success w-100 fw-bold">CREAR CUENTA</button></form></div></div>' +
+        '<div class="col-md-8"><table class="table border-dark align-middle"><thead><tr><th>Usuario</th><th>Rango</th><th>Acción</th></tr></thead><tbody>';
+
+        users.forEach(u => {
+            html += `<tr><td><b>${u.username}</b></td><td><span class="badge ${u.rol === 'admin' ? 'bg-primary' : 'bg-secondary'}">${u.rol}</span></td>` +
+                    `<td>${u.username !== 'admin' ? `<a href="/borrar-usuario/${u.id}" class="btn btn-sm btn-danger" onclick="return confirm('¿Eliminar acceso?')">Borrar</a>` : '<i>Inamovible</i>'}</td></tr>`;
+        });
+
+        html += '</tbody></table></div></div></div></div></body>';
+        res.send(html);
+    });
+});
+
+// 2. Ruta para procesar la creación de nuevos usuarios
+app.post('/crear-usuario', requiereLogin, (req, res) => {
+    if (req.session.rol === 'admin') {
+        const { user, pass, rol } = req.body;
+        db.run("INSERT INTO usuarios (username, password, rol) VALUES (?, ?, ?)", [user, pass, rol], () => res.redirect('/gestion-usuarios'));
+    }
+});
+
+// 3. Ruta para eliminar usuarios
+app.get('/borrar-usuario/:id', requiereLogin, (req, res) => {
+    if (req.session.rol === 'admin') {
+        db.run("DELETE FROM usuarios WHERE id = ? AND username != 'admin'", [req.params.id], () => res.redirect('/gestion-usuarios'));
+    }
+});
+
+
+
 app.listen(port, () => console.log('Manada V11 Live!'));
+
 
