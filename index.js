@@ -43,21 +43,40 @@ function requiereLogin(req, res, next) {
 // --- EXPORTAR ---
 app.get('/exportar', requiereLogin, async (req, res) => {
     const workbook = new ExcelJS.Workbook();
-    const sheet = workbook.addWorksheet('Clientes');
+    const sheet = workbook.addWorksheet('Base de Datos Manada');
+    
     sheet.columns = [
-        { header: 'Nombre', key: 'n', width: 20 },
-        { header: 'Apellido', key: 'a', width: 20 },
-        { header: 'Teléfono', key: 't', width: 15 },
-        { header: 'Puntos', key: 'p', width: 10 }
+        { header: 'Dueño', key: 'dueno', width: 25 },
+        { header: 'Teléfono', key: 'tel', width: 15 },
+        { header: 'Dirección', key: 'dir', width: 25 },
+        { header: 'Puntos', key: 'pts', width: 10 },
+        { header: 'Mascota', key: 'pet', width: 15 },
+        { header: 'Tipo', key: 'tipo', width: 10 },
+        { header: 'Cumpleaños', key: 'cumple', width: 15 },
+        { header: 'Info/Notas', key: 'info', width: 30 }
     ];
-    db.all('SELECT * FROM clientes', (err, rows) => {
-        rows.forEach(r => sheet.addRow({ n: r.nombre, a: r.apellido, t: r.telefono, p: r.puntos }));
+
+    const q = 'SELECT c.nombre, c.apellido, c.telefono, c.direccion, c.puntos, m.nombre_mascota, m.tipo, m.cumple, m.info FROM clientes c LEFT JOIN mascotas m ON c.id = m.cliente_id';
+    
+    db.all(q, (err, rows) => {
+        if (err) return res.send("Error al exportar");
+        rows.forEach(r => {
+            sheet.addRow({
+                dueno: r.nombre + ' ' + r.apellido,
+                tel: r.telefono,
+                dir: r.direccion,
+                pts: r.puntos,
+                pet: r.nombre_mascota,
+                tipo: r.tipo,
+                cumple: r.cumple,
+                info: r.info
+            });
+        });
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        res.setHeader('Content-Disposition', 'attachment; filename=Backup_Espacio_Animal.xlsx');
+        res.setHeader('Content-Disposition', 'attachment; filename=Backup_Manada_Completo.xlsx');
         workbook.xlsx.write(res).then(() => res.end());
     });
 });
-
 // --- LOGIN ---
 app.get('/login', (req, res) => {
     res.send('<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">' +
@@ -115,11 +134,14 @@ app.get('/', requiereLogin, (req, res) => {
                 let btnWsComun = f.telefono ? '<a href="https://wa.me/' + f.telefono + '" target="_blank" class="btn btn-sm btn-outline-success py-0 px-1 ms-1"><i class="bi bi-whatsapp"></i></a>' : '';
 
                 html += '<tr><td>' + premio + '<div class="fw-bold text-uppercase">' + f.nombre + ' ' + f.apellido + '</div>' +
+                        ' <a href="/editar-cliente/' + f.id + '" class="text-primary ms-1" title="Editar Dueño"><i class="bi bi-pencil-square"></i></a></div>' +
                         '<div class="small text-muted mb-1">' + (f.direccion || "") + '</div>' +
                         '<span class="badge bg-dark text-warning p-2">⭐ ' + f.puntos + ' pts</span>' +
                         '<form action="/sumar-punto" method="POST" class="d-inline"><input type="hidden" name="id" value="' + f.id + '"><button class="btn btn-sm btn-success ms-1">+</button></form>' +
                         btnWsComun + '</td><td>' +
                         '<div class="d-flex flex-wrap gap-2 mb-3">';
+
+    
                 
                 if (f.lista_m) {
                     f.lista_m.split(',').forEach(m => {
@@ -190,4 +212,28 @@ app.post('/edit-m/:id', requiereLogin, upload.single('foto'), (req, res) => {
     else db.run("UPDATE mascotas SET nombre_mascota=?, tipo=?, cumple=?, info=? WHERE id=?", [nom, tipo, cumple, info, req.params.id], () => res.redirect('/'));
 });
 
+
+app.get('/editar-cliente/:id', requiereLogin, (req, res) => {
+    db.get("SELECT * FROM clientes WHERE id = ?", [req.params.id], (err, c) => {
+        if (!c) return res.redirect('/');
+        res.send('<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">' +
+        '<body style="background:#FFAA00; padding:50px;"><div class="card mx-auto p-4 shadow" style="max-width:400px; border:3px solid #000; border-radius:15px;">' +
+        '<h4>Editar Datos del Dueño</h4><form action="/editar-cliente/' + c.id + '" method="POST">' +
+        '<label class="small fw-bold">Nombre</label><input name="nombre" class="form-control mb-2 border-dark" value="' + c.nombre + '">' +
+        '<label class="small fw-bold">Apellido</label><input name="apellido" class="form-control mb-2 border-dark" value="' + c.apellido + '">' +
+        '<label class="small fw-bold">WhatsApp (549...)</label><input name="telefono" class="form-control mb-2 border-dark" value="' + c.telefono + '">' +
+        '<label class="small fw-bold">Dirección</label><input name="direccion" class="form-control mb-3 border-dark" value="' + (c.direccion || "") + '">' +
+        '<button class="btn btn-dark w-100 fw-bold">GUARDAR CAMBIOS</button>' +
+        '<a href="/" class="btn btn-link w-100 text-dark mt-2">Cancelar</a></form></div></body>');
+    });
+});
+
+// Procesa la edición del dueño
+app.post('/editar-cliente/:id', requiereLogin, (req, res) => {
+    const { nombre, apellido, telefono, direccion } = req.body;
+    db.run("UPDATE clientes SET nombre=?, apellido=?, telefono=?, direccion=? WHERE id=?", 
+    [nombre, apellido, telefono, direccion, req.params.id], () => res.redirect('/'));
+});
+
 app.listen(port, () => console.log('Manada V11 Live!'));
+
