@@ -80,6 +80,21 @@ app.get('/exportar', requiereLogin, async (req, res) => {
 // --- LOGIN ---
 app.get('/login', (req, res) => {
     res.send('<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">' +
+   
+    '<link rel="manifest" href="/manifest.json">' + // Vincula el archivo de configuración de la PWA
+    '<meta name="theme-color" content="#FFAA00">' + // Define el color de la barra del navegador móvil
+    '<script>' +
+    "  if ('serviceWorker' in navigator) {" +      // Comprueba si el navegador soporta Service Workers
+    "    window.addEventListener('load', () => {" +
+    "      navigator.serviceWorker.register('/sw.js')" + // Registra el Service Worker de la PWA
+    "        .then(reg => console.log('Service Worker registrado', reg))" +
+    "        .catch(err => console.log('Error SW', err));" +
+    "    });" +
+    "  }" +
+    '</script>' +
+
+
+             
     '<body style="background:#FFAA00; height:100vh; display:flex; align-items:center;">' +
     '<div class="container text-center"><div class="card mx-auto p-4 shadow" style="max-width:400px; border:4px solid #000; border-radius:20px;">' +
     '<img src="/portada.jpeg" class="img-fluid mb-3 rounded border border-dark">' +
@@ -112,6 +127,21 @@ app.get('/', requiereLogin, (req, res) => {
     db.all(query, ['%' + busqueda + '%', '%' + busqueda + '%', '%' + busqueda + '%'], (err, filas) => {
         let html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">' +
         '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">' +
+        '<link rel="manifest" href="/manifest.json">' + // Vincula el manifiesto en el panel principal
+        '<meta name="theme-color" content="#FFAA00">' + // Configura el color de tema para dispositivos móviles
+        '<script>' +
+        "  if ('serviceWorker' in navigator) {" +      // Valida soporte para Service Worker
+        "    window.addEventListener('load', () => {" +
+        "      navigator.serviceWorker.register('/sw.js')" + // Realiza el registro del SW en segundo plano
+        "        .then(reg => console.log('Service Worker registrado', reg))" +
+        "        .catch(err => console.log('Error SW', err));" +
+        "    });" +
+        "  }" +
+        '</script>' +
+
+
+
+            
         '<style>body{background:#FFD600;}.navbar{background:#FFAA00;border-bottom:4px solid #000;}.card{border:3px solid #000;border-radius:15px;}' +
         '.img-box{width:65px;height:65px;border:2px solid #000;border-radius:50%;overflow:hidden;background:#fff;display:flex;align-items:center;justify-content:center;}' +
         '.img-mascota{width:100%;height:100%;object-fit:cover;}.cumple-hoy{border:4px solid #ff4500;animation:scale 0.8s infinite alternate;}' +
