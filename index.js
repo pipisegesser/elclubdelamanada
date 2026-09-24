@@ -316,7 +316,10 @@ app.get('/borrar-usuario/:id', requiereLogin, (req, res) => {
 
 
 
-app.listen(port, '0.0.0.0', () => console.log('Manada V11 Live!'));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Manada V11 Live on port ${PORT}!`);
+});
 
 
 
