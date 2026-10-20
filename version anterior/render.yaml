@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: el-club-de-la-manada
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node index.js
+    disk:
+      name: datos-manada
+      mountPath: /data
+      sizeGB: 1
