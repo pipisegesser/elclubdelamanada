@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, Date, ForeignKey
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -26,6 +26,7 @@ class Mascota(Base):
     nombre = Column(String(50))
     especie = Column(String(30))
     raza = Column(String(50), nullable=True)
+    fecha_nacimiento = Column(Date, nullable=True)
     cliente_id = Column(Integer, ForeignKey("clientes.id"))
     
     cliente = relationship("Cliente", back_populates="mascotas")

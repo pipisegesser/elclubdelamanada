@@ -1,18 +1,34 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import List, Optional
+from datetime import date
 
-class ClienteBase(BaseModel):
-    nombre: str
-    apellido: str
-    telefono: str
-    email: Optional[str] = None
-    direccion: Optional[str] = None
+class PetBase(BaseModel):
+    name: str
+    species: str
+    breed: Optional[str] = None
 
-class ClienteCreate(ClienteBase):
+class PetCreate(PetBase):
     pass
 
-class ClienteResponse(ClienteBase):
+class PetResponse(PetBase):
     id: int
+    client_id: int
+
+    class Config:
+        from_attributes = True
+
+class ClientBase(BaseModel):
+    name: str
+    phone: str
+    birth_date: Optional[date] = None
+    points: Optional[int] = 0
+
+class ClientCreate(ClientBase):
+    pass
+
+class ClientResponse(ClientBase):
+    id: int
+    pets: List[PetResponse] = []
 
     class Config:
         from_attributes = True
