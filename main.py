@@ -11,6 +11,11 @@ import models
 import schemas
 import crud
 from database import SessionLocal, engine
+from pydantic import BaseModel
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
 
 # Crea las tablas si no existen
 models.Base.metadata.create_all(bind=engine)
@@ -39,11 +44,6 @@ def get_db():
 @app.get("/")
 def leer_raiz():
     return RedirectResponse(url="/login", status_code=303)
-
-# --- RUTA HTML DE LOGIN ---
-@app.get("/login", response_class=HTMLResponse)
-def login_view(request: Request):
-    return templates.TemplateResponse(request, "login.html")
 
 # --- VISTA HTML PRINCIPAL (Panel Visual) ---
 @app.get("/panel", response_class=HTMLResponse)
@@ -99,6 +99,11 @@ def registrar_cliente_api(cliente: schemas.ClienteCreate, db: Session = Depends(
     return crud.crear_cliente(db=db, cliente=cliente)
 
 
+# --- RUTA HTML DE LOGIN ---
+@app.get("/login", response_class=HTMLResponse)
+def login_view(request: Request):
+    return templates.TemplateResponse(request, "login.html")
+
 # --- ACCIÓN: PROCESAR EL LOGIN ---
 @app.post("/login", response_class=HTMLResponse)
 def login_post(
@@ -107,4 +112,13 @@ def login_post(
     password: str = Form(...), 
     db: Session = Depends(get_db)
 ):
+    if username == "admin" and password == "admin123":
+        return RedirectResponse(url="/panel", status_code=303)
+    else:
+        return templates.TemplateResponse(
+            request, 
+            "login.html", 
+            {"error": "Credenciales incorrectas"}
+        )
+
     return RedirectResponse(url="/panel", status_code=303)
