@@ -14,6 +14,7 @@
             <form action="/login" method="POST">
                 <input type="text" name="usuario" class="form-control mb-3 border-dark" placeholder="Usuario" required>
                 <input type="password" name="password" class="form-control mb-4 border-dark" placeholder="Contraseña" required>
+                {% if error %}<div class="alert alert-danger py-1 small">Usuario o contraseña incorrectos</div>{% endif %}
                 <button class="btn btn-dark w-100 fw-bold">ENTRAR</button>
             </form>
         </div>

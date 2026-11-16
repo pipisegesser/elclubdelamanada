@@ -17,8 +17,9 @@ class Cliente(Base):
     telefono = Column(String(30))
     email = Column(String(100), nullable=True)
     direccion = Column(String(150), nullable=True)
+    puntos = Column(Integer, default=0)
     
-    mascotas = relationship("Mascota", back_populates="cliente")
+    mascotas = relationship("Mascota", back_populates="cliente", cascade="all, delete-orphan")
 
 class Mascota(Base):
     __tablename__ = "mascotas"
@@ -26,6 +27,7 @@ class Mascota(Base):
     nombre = Column(String(50))
     especie = Column(String(30))
     raza = Column(String(50), nullable=True)
+    cumple = Column(String(20), nullable=True)
     cliente_id = Column(Integer, ForeignKey("clientes.id"))
     
     cliente = relationship("Cliente", back_populates="mascotas")
